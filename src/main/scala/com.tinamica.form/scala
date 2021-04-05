@@ -1,0 +1,47 @@
+package  com.tinamica.form
+
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming._
+import org.apache.spark.streaming.kafka010._
+
+object MyApp {
+  def main (arg: Array[String]): Unit = {
+    val sc = new SparkConf()
+    val ssc = new StreamingContext(sc, Minutes(1))
+
+    val topics = "topic_test"
+    val brokers = "localhost:9092" // broker de Kafka
+    val groupId = "0" // Identificador del grupo.
+
+    // Create direct kafka stream with brokers and topics
+    val topicsSet = topics.split(",").toSet
+
+
+    val kafkaParams = Map[String, Object](
+      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> brokers,
+      ConsumerConfig.GROUP_ID_CONFIG -> groupId,
+      ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> classOf[StringDeserializer],
+      ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> classOf[StringDeserializer])
+
+
+    val messages = KafkaUtils.createDirectStream[String, String](
+      ssc,
+      LocationStrategies.PreferConsistent,
+      ConsumerStrategies.Subscribe[String, String](topicsSet, kafkaParams))
+
+    val lines = messages.map(_.value)
+
+    val path="/home/vicentecipre/Escritorio/cursos-trabajos/kafka/txt/pruebas/kafkamsg10"
+
+    lines.saveAsTextFiles(path,"txt")
+
+    lines.print()
+    // Start the computation
+
+    ssc.start()
+    ssc.awaitTermination()
+  }
+
+}
